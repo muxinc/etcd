@@ -236,14 +236,22 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// gofail: var raftBeforeSaveSnap struct{}
 					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
-						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
+						if r.lg != nil {
+							r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
+						} else {
+							plog.Fatalf("failed to save Raft snapshot %v", err)
+						}
 					}
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
 				// gofail: var raftBeforeSave struct{}
 				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					if r.lg != nil {
+						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					} else {
+						plog.Fatalf("failed to save state and entries error: %v", err)
+					}
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
@@ -256,7 +264,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
 					// See https://github.com/etcd-io/etcd/issues/10219 for more details.
 					if err := r.storage.Sync(); err != nil {
-						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
+						if r.lg != nil {
+							r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
+						} else {
+							plog.Fatalf("failed to sync Raft snapshot %v", err)
+						}
 					}
 
 					// etcdserver now claim the snapshot has been persisted onto the disk
@@ -268,7 +280,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftAfterApplySnap struct{}
 
 					if err := r.storage.Release(rd.Snapshot); err != nil {
-						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
+						if r.lg != nil {
+							r.lg.Fatal("failed to release Raft wal", zap.Error(err))
+						} else {
+							plog.Fatalf("failed to release Raft wal %v", err)
+						}
 					}
 					// gofail: var raftAfterWALRelease struct{}
 				}

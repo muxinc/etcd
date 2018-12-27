@@ -32,9 +32,37 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/coreos/pkg/capnslog"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/etcdserver/api/v2discovery"
+	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
+	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
+	"go.etcd.io/etcd/etcdserver/api/v2store"
+	"go.etcd.io/etcd/etcdserver/api/v3alarm"
+	"go.etcd.io/etcd/etcdserver/api/v3compactor"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease"
+	"go.etcd.io/etcd/lease/leasehttp"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/idutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/runtime"
+	"go.etcd.io/etcd/pkg/schedule"
+	"go.etcd.io/etcd/pkg/traceutil"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/pkg/wait"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/version"
+	"go.etcd.io/etcd/wal"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -484,13 +512,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 
 		// Find a snapshot to start/restart a raft node
-		walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
-		if err != nil {
-			return nil, err
+		walSnaps, serr := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+		if serr != nil {
+			return nil, serr
 		}
 		// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
 		// wal log entries
-		snapshot, err := ss.LoadNewestAvailable(walSnaps)
+		snapshot, err = ss.LoadNewestAvailable(walSnaps)
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
@@ -2365,6 +2393,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		}
 		if err = s.r.storage.Release(snap); err != nil {
 			lg.Panic("failed to release wal", zap.Error(err))
+		}
+		if err = s.r.storage.Release(snap); err != nil {
+			if lg != nil {
+				lg.Panic("failed to release wal", zap.Error(err))
+			} else {
+				plog.Panicf("failed to release wal %v", err)
+			}
 		}
 
 		lg.Info(

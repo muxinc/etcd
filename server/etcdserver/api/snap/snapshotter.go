@@ -26,13 +26,13 @@ import (
 	"strings"
 	"time"
 
-	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
-	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
-
+	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/etcdserver/api/snap/snappb"
+	pioutil "go.etcd.io/etcd/pkg/ioutil"
+	"go.etcd.io/etcd/pkg/pbutil"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -265,6 +265,34 @@ func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
 			}
 			if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
 				return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
+	dir, err := os.Open(s.dir)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	filenames, err := dir.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, filename := range filenames {
+		if strings.HasSuffix(filename, ".snap.db") {
+			hexIndex := strings.TrimSuffix(filepath.Base(filename), ".snap.db")
+			index, err := strconv.ParseUint(hexIndex, 16, 64)
+			if err != nil {
+				return fmt.Errorf("failed to parse index from .snap.db filename '%s': %v", filename, err)
+			}
+			if index < snap.Metadata.Index {
+				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
+				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
+					return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
+				}
 			}
 		}
 	}
