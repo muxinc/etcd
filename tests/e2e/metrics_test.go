@@ -39,6 +39,13 @@ func metricsTest(cx ctlCtx) {
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}
+	ver := version.Version
+	if strings.HasSuffix(ver, "-pre") {
+		ver = strings.Replace(ver, "-pre", "", 1)
+	}
+	if strings.HasSuffix(ver, "-rc.0") {
+		ver = strings.Replace(ver, "-rc.0", "", 1)
+	}
 
 	i := 0
 	for _, test := range []struct {
