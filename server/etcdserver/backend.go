@@ -96,12 +96,11 @@ func openBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
-func recoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool, hooks backend.Hooks) (backend.Backend, error) {
-	consistentIndex := uint64(0)
-	if beExist {
-		consistentIndex, _ = cindex.ReadConsistentIndex(oldbe.BatchTx())
-	}
-	if snapshot.Metadata.Index <= consistentIndex {
+func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot) (backend.Backend, error) {
+	var cIndex consistentIndex
+	kv := mvcc.New(cfg.Logger, oldbe, &lease.FakeLessor{}, &cIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+	defer kv.Close()
+	if snapshot.Metadata.Index <= kv.ConsistentIndex() {
 		return oldbe, nil
 	}
 	oldbe.Close()

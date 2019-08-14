@@ -57,11 +57,19 @@ type StoreConfig struct {
 	CompactionBatchLimit int
 }
 
+type StoreConfig struct {
+	CompactionBatchLimit int
+}
+
 type store struct {
 	ReadView
 	WriteView
 
 	cfg StoreConfig
+
+	// consistentIndex caches the "consistent_index" key's value. Accessed
+	// through atomics so must be 64-bit aligned.
+	consistentIndex uint64
 
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
@@ -89,10 +97,7 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *store {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *store {
 	if cfg.CompactionBatchLimit == 0 {
 		cfg.CompactionBatchLimit = defaultCompactBatchLimit
 	}

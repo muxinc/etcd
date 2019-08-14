@@ -234,18 +234,8 @@ Experimental feature:
     Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
-  --experimental-compaction-batch-limit 1000
+  --experimental-compaction-batch-limit
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
-  --experimental-peer-skip-client-san-verification 'false'
-    Skip verification of SAN field in client certificate for peer connections.
-  --experimental-watch-progress-notify-interval '10m'
-    Duration of periodical watch progress notification.
-  --experimental-warning-apply-duration '100ms'
-	Warning is generated if requests take more than this duration.
-  --experimental-txn-mode-write-with-shared-buffer 'true'
-    Enable the write transaction to use a shared buffer in its readonly check operations.
-  --experimental-bootstrap-defrag-threshold-megabytes
-    Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
 
 Unsafe feature:
   --force-new-cluster 'false'

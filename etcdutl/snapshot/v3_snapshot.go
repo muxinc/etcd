@@ -379,6 +379,37 @@ func (s *v3Manager) copyAndVerifyDB() error {
 
 	// db hash is OK, can now modify DB so it can be part of a new cluster
 	db.Close()
+
+	commit := len(s.cl.Members())
+
+	// update consistentIndex so applies go through on etcdserver despite
+	// having a new raft instance
+	be := backend.NewDefaultBackend(dbpath)
+
+	// a lessor never timeouts leases
+	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
+
+	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit), mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	txn := mvs.Write()
+	btx := be.BatchTx()
+	del := func(k, v []byte) error {
+		txn.DeleteRange(k, nil)
+		return nil
+	}
+
+	// delete stored members from old cluster since using new members
+	btx.UnsafeForEach([]byte("members"), del)
+
+	// todo: add back new members when we start to deprecate old snap file.
+	btx.UnsafeForEach([]byte("members_removed"), del)
+
+	// trigger write-out of new consistent index
+	txn.End()
+
+	mvs.Commit()
+	mvs.Close()
+	be.Close()
+
 	return nil
 }
 

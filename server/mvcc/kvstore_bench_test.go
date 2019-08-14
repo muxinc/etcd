@@ -28,8 +28,9 @@ import (
 )
 
 func BenchmarkStorePut(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -47,8 +48,9 @@ func BenchmarkStoreRangeKey1(b *testing.B)   { benchmarkStoreRange(b, 1) }
 func BenchmarkStoreRangeKey100(b *testing.B) { benchmarkStoreRange(b, 100) }
 
 func benchmarkStoreRange(b *testing.B, n int) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// 64 byte key/val
@@ -74,9 +76,10 @@ func benchmarkStoreRange(b *testing.B, n int) {
 }
 
 func BenchmarkConsistentIndex(b *testing.B) {
-	be, _ := betesting.NewDefaultTmpBackend(b)
-	ci := cindex.NewConsistentIndex(be)
-	defer betesting.Close(b, be)
+	fci := fakeConsistentIndex(10)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &fci, StoreConfig{})
+	defer cleanup(s, be, tmpPath)
 
 	// This will force the index to be reread from scratch on each call.
 	ci.SetConsistentIndex(0, 0)
@@ -96,8 +99,9 @@ func BenchmarkConsistentIndex(b *testing.B) {
 
 // BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -114,8 +118,9 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -134,8 +139,9 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 
 // benchmarkStoreRestore benchmarks the restore operation
 func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 	// use closure to capture 's' to pick up the reassignment
 	defer func() { cleanup(s, be, tmpPath) }()
 
@@ -155,7 +161,7 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

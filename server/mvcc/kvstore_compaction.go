@@ -40,12 +40,11 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 
 		tx := s.b.BatchTx()
 		tx.Lock()
-		keys, _ := tx.UnsafeRange(buckets.Key, last, end, int64(s.cfg.CompactionBatchLimit))
+		keys, _ := tx.UnsafeRange(keyBucketName, last, end, int64(s.cfg.CompactionBatchLimit))
 		for _, key := range keys {
 			rev = bytesToRev(key)
 			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(buckets.Key, key)
-				keyCompactions++
+				tx.UnsafeDelete(keyBucketName, key)
 			}
 		}
 
@@ -54,11 +53,15 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(buckets.Meta, finishedCompactKeyName, rbytes)
 			tx.Unlock()
-			s.lg.Info(
-				"finished scheduled compaction",
-				zap.Int64("compact-revision", compactMainRev),
-				zap.Duration("took", time.Since(totalStart)),
-			)
+			if s.lg != nil {
+				s.lg.Info(
+					"finished scheduled compaction",
+					zap.Int64("compact-revision", compactMainRev),
+					zap.Duration("took", time.Since(totalStart)),
+				)
+			} else {
+				plog.Infof("finished scheduled compaction at %d (took %v)", compactMainRev, time.Since(totalStart))
+			}
 			return true
 		}
 
