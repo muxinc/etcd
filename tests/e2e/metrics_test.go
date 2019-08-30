@@ -36,15 +36,10 @@ func TestV3MetricsInsecure(t *testing.T) {
 }
 
 func metricsTest(cx ctlCtx) {
-	cx.t.Skip()
-
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	ver := version.Version
-	if strings.HasSuffix(ver, "-pre") {
-		ver = strings.Replace(ver, "-pre", "", 1)
-	}
 
 	i := 0
 	for _, test := range []struct {
