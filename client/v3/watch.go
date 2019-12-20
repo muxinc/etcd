@@ -558,12 +558,12 @@ func (w *watchGrpcStream) run() {
 				if len(w.resuming) == 1 {
 					// head of resume queue, can register a new watcher
 					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						w.lg.Debug("error when sending request", zap.Error(err))
+						lg.Warningf("error when sending request: %v", err)
 					}
 				}
 			case *progressRequest:
 				if err := wc.Send(wreq.toPB()); err != nil {
-					w.lg.Debug("error when sending request", zap.Error(err))
+					lg.Warningf("error when sending request: %v", err)
 				}
 			}
 
@@ -591,7 +591,7 @@ func (w *watchGrpcStream) run() {
 
 				if ws := w.nextResume(); ws != nil {
 					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						w.lg.Debug("error when sending request", zap.Error(err))
+						lg.Warningf("error when sending request: %v", err)
 					}
 				}
 
@@ -654,7 +654,7 @@ func (w *watchGrpcStream) run() {
 			}
 			if ws := w.nextResume(); ws != nil {
 				if err := wc.Send(ws.initReq.toPB()); err != nil {
-					w.lg.Debug("error when sending request", zap.Error(err))
+					lg.Warningf("error when sending request: %v", err)
 				}
 			}
 			cancelSet = make(map[int64]struct{})
