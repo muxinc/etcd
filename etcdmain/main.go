@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/go-systemd/v22/daemon"
+	"github.com/coreos/go-systemd/daemon"
 	"go.uber.org/zap"
 )
 
