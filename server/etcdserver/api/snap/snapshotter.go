@@ -224,11 +224,10 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	filenames, err := s.cleanupSnapdir(names)
-	if err != nil {
+	if err = s.cleanupSnapdir(names); err != nil {
 		return nil, err
 	}
-	snaps := checkSuffix(s.lg, filenames)
+	snaps := checkSuffix(s.lg, names)
 	if len(snaps) == 0 {
 		return nil, ErrNoSnapshot
 	}
@@ -256,44 +255,16 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 
 // cleanupSnapdir removes any files that should not be in the snapshot directory:
 // - db.tmp prefixed files that can be orphaned by defragmentation
-func (s *Snapshotter) cleanupSnapdir(filenames []string) (names []string, err error) {
-	names = make([]string, 0, len(filenames))
+func (s *Snapshotter) cleanupSnapdir(filenames []string) error {
 	for _, filename := range filenames {
 		if strings.HasPrefix(filename, "db.tmp") {
-			s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
+			if s.lg != nil {
+				s.lg.Info("found orphaned defragmentation file; deleting", zap.String("path", filename))
+			} else {
+				plog.Infof("found orphaned defragmentation file; deleting: %s", filename)
+			}
 			if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
-				return names, fmt.Errorf("failed to remove orphaned .snap.db file %s: %v", filename, rmErr)
-			}
-		} else {
-			names = append(names, filename)
-		}
-	}
-	return names, nil
-}
-
-func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
-	dir, err := os.Open(s.dir)
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-	filenames, err := dir.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, filename := range filenames {
-		if strings.HasSuffix(filename, ".snap.db") {
-			hexIndex := strings.TrimSuffix(filepath.Base(filename), ".snap.db")
-			index, err := strconv.ParseUint(hexIndex, 16, 64)
-			if err != nil {
-				s.lg.Error("failed to parse index from filename", zap.String("path", filename), zap.String("error", err.Error()))
-				continue
-			}
-			if index < snap.Metadata.Index {
-				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
-				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
-					s.lg.Error("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.String("error", rmErr.Error()))
-				}
+				return fmt.Errorf("failed to remove orphaned defragmentation file %s: %v", filename, rmErr)
 			}
 		}
 	}

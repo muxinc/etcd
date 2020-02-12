@@ -458,15 +458,10 @@ func (b *backend) defrag() error {
 	if err != nil {
 		return err
 	}
-	options := bolt.Options{}
-	if boltOpenOptions != nil {
-		options = *boltOpenOptions
-	}
-	options.OpenFile = func(_ string, _ int, _ os.FileMode) (file *os.File, err error) {
+	options := *boltOpenOptions
+	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
 		return temp, nil
 	}
-	// Don't load tmp db into memory regardless of opening options
-	options.Mlock = false
 	tdbp := temp.Name()
 	tmpdb, err := bolt.Open(tdbp, 0600, &options)
 	if err != nil {
@@ -490,7 +485,11 @@ func (b *backend) defrag() error {
 	if err != nil {
 		tmpdb.Close()
 		if rmErr := os.RemoveAll(tmpdb.Path()); rmErr != nil {
-			b.lg.Error("failed to remove db.tmp after defragmentation completed", zap.Error(rmErr))
+			if b.lg != nil {
+				b.lg.Error("failed to remove db.tmp after defragmentation completed", zap.Error(rmErr))
+			} else {
+				plog.Fatalf("failed to remove db.tmp after defragmentation completed: %v", rmErr)
+			}
 		}
 		return err
 	}
