@@ -1345,3 +1345,11 @@ func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
 		}
 	}
 }
+
+func (as *authStore) setupMetricsReporter() {
+	reportCurrentAuthRevMu.Lock()
+	reportCurrentAuthRev = func() float64 {
+		return float64(as.Revision())
+	}
+	reportCurrentAuthRevMu.Unlock()
+}
