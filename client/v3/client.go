@@ -321,6 +321,16 @@ func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCred
 	default:
 		panic(fmt.Errorf("unsupported CredsRequirement: %v", r))
 	}
+	return creds, nil
+}
+
+func (c *Client) dialWithBalancerCreds(ep string) grpccredentials.TransportCredentials {
+	_, _, scheme := endpoint.ParseEndpoint(ep)
+	creds := c.creds
+	if len(scheme) != 0 {
+		creds = c.processCreds(scheme)
+	}
+	return creds
 }
 
 func newClient(cfg *Config) (*Client, error) {
