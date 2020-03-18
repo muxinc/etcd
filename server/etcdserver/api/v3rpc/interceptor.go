@@ -16,16 +16,17 @@ package v3rpc
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
-
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"github.com/coreos/pkg/capnslog"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
+	"go.etcd.io/etcd/raft"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -55,7 +56,7 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
-			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			ver, vs := "unknown", metadataGet(md, rpctypes.MetadataClientAPIVersionKey)
 			if len(vs) > 0 {
 				ver = vs[0]
 			}
@@ -221,7 +222,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 
 		md, ok := metadata.FromIncomingContext(ss.Context())
 		if ok {
-			ver, vs := "unknown", md.Get(rpctypes.MetadataClientAPIVersionKey)
+			ver, vs := "unknown", metadataGet(md, rpctypes.MetadataClientAPIVersionKey)
 			if len(vs) > 0 {
 				ver = vs[0]
 			}
@@ -342,4 +343,9 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 	})
 
 	return smap
+}
+
+func metadataGet(md metadata.MD, k string) []string {
+	k = strings.ToLower(k)
+	return md[k]
 }
