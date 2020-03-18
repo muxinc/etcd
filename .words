@@ -52,6 +52,7 @@ keepalive
 Keepalive
 KeepAlive
 keepalives
+hasleader
 keyspace
 lexically
 lexicographically
