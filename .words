@@ -53,6 +53,7 @@ Keepalive
 KeepAlive
 keepalives
 hasleader
+racey
 keyspace
 lexically
 lexicographically
