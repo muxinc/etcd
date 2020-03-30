@@ -342,7 +342,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 		}
 
 		if user.Options != nil && user.Options.NoPassword {
-			return 0, ErrNoPasswordUser
+			return 0, ErrAuthFailed
 		}
 
 		return getRevision(tx), nil
