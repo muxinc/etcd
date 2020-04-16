@@ -659,7 +659,7 @@ func TestOpenForRead(t *testing.T) {
 }
 
 func TestOpenWithMaxIndex(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
