@@ -1217,8 +1217,6 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 
 // TestV3WatchCancellation ensures that watch cancellation frees up server resources.
 func TestV3WatchCancellation(t *testing.T) {
-	BeforeTest(t)
-
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1244,54 +1242,7 @@ func TestV3WatchCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var expected string
-	if ThroughProxy {
-		// grpc proxy has additional 2 watches open
-		expected = "3"
-	} else {
-		expected = "1"
-	}
-
-	if minWatches != expected {
-		t.Fatalf("expected %s watch, got %s", expected, minWatches)
-	}
-}
-
-// TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
-func TestV3WatchCloseCancelRace(t *testing.T) {
-	BeforeTest(t)
-
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cli := clus.RandClient()
-
-	for i := 0; i < 1000; i++ {
-		ctx, cancel := context.WithCancel(ctx)
-		cli.Watch(ctx, "/foo")
-		cancel()
-	}
-
-	// Wait a little for cancellations to take hold
-	time.Sleep(3 * time.Second)
-
-	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var expected string
-	if ThroughProxy {
-		// grpc proxy has additional 2 watches open
-		expected = "2"
-	} else {
-		expected = "0"
-	}
-
-	if minWatches != expected {
-		t.Fatalf("expected %s watch, got %s", expected, minWatches)
+	if minWatches != "1" {
+		t.Fatalf("expected one watch, got %s", minWatches)
 	}
 }
