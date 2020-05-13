@@ -23,9 +23,15 @@ type revision struct {
 	sub  int64
 }
 
-func bytesToRev(bytes []byte) revision {
-	return revision{
-		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
-		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
-	}
+type errPicker struct {
+	p   Policy
+	err error
+}
+
+func (ep *errPicker) String() string {
+	return ep.p.String()
+}
+
+func (ep *errPicker) Pick(context.Context, balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
+	return nil, nil, ep.err
 }
