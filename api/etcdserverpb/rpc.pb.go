@@ -116,9 +116,8 @@ var RangeRequest_SortTarget_value = map[string]int32{
 func (x RangeRequest_SortTarget) String() string {
 	return proto.EnumName(RangeRequest_SortTarget_name, int32(x))
 }
-
 func (RangeRequest_SortTarget) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{1, 1}
+	return fileDescriptorRpc, []int{1, 1}
 }
 
 type Compare_CompareResult int32
