@@ -21,14 +21,14 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/mvcc"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/mvcc"
+	"go.etcd.io/etcd/mvcc/backend"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/version"
 
 	"go.uber.org/zap"
 )
@@ -117,23 +117,25 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	// used for integrity checks during snapshot restore operation
 	h := sha256.New()
 
+	// buffer just holds read bytes from stream
+	// response size is multiple of OS page size, fetched in boltdb
+	// e.g. 4*1024
+	buf := make([]byte, snapshotSendBufferSize)
+
 	sent := int64(0)
 	total := snap.Size()
 	size := humanize.Bytes(uint64(total))
 
 	start := time.Now()
-	ms.lg.Info("sending database snapshot to client",
-		zap.Int64("total-bytes", total),
-		zap.String("size", size),
-	)
+	if ms.lg != nil {
+		ms.lg.Info("sending database snapshot to client",
+			zap.Int64("total-bytes", total),
+			zap.String("size", size),
+		)
+	} else {
+		plog.Infof("sending database snapshot to client %s [%d bytes]", size, total)
+	}
 	for total-sent > 0 {
-		// buffer just holds read bytes from stream
-		// response size is multiple of OS page size, fetched in boltdb
-		// e.g. 4*1024
-		// NOTE: srv.Send does not wait until the message is received by the client.
-		// Therefore the buffer can not be safely reused between Send operations
-		buf := make([]byte, snapshotSendBufferSize)
-
 		n, err := io.ReadFull(pr, buf)
 		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 			return togRPCError(err)
@@ -148,6 +150,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		// server sends snapshot SHA?
 		// No, the client will still receive non-nil response
 		// until server closes the stream with EOF
+
 		resp := &pb.SnapshotResponse{
 			RemainingBytes: uint64(total - sent),
 			Blob:           buf[:n],
@@ -162,20 +165,30 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	// during snapshot restore operation
 	sha := h.Sum(nil)
 
-	ms.lg.Info("sending database sha256 checksum to client",
-		zap.Int64("total-bytes", total),
-		zap.Int("checksum-size", len(sha)),
-	)
+	if ms.lg != nil {
+		ms.lg.Info("sending database sha256 checksum to client",
+			zap.Int64("total-bytes", total),
+			zap.Int("checksum-size", len(sha)),
+		)
+	} else {
+		plog.Infof("sending database sha256 checksum to client [%d bytes]", len(sha))
+	}
+
 	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha}
 	if err := srv.Send(hresp); err != nil {
 		return togRPCError(err)
 	}
 
-	ms.lg.Info("successfully sent database snapshot to client",
-		zap.Int64("total-bytes", total),
-		zap.String("size", size),
-		zap.String("took", humanize.Time(start)),
-	)
+	if ms.lg != nil {
+		ms.lg.Info("successfully sent database snapshot to client",
+			zap.Int64("total-bytes", total),
+			zap.String("size", size),
+			zap.String("took", humanize.Time(start)),
+		)
+	} else {
+		plog.Infof("successfully sent database snapshot to client %s [%d bytes]", size, total)
+	}
+
 	return nil
 }
 

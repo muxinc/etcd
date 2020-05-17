@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -97,7 +98,58 @@ func hasChecksum(n int64) bool {
 
 // Save fetches snapshot from remote etcd server and saves data to target path.
 func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) error {
-	return snapshot.Save(ctx, s.lg, cfg, dbPath)
+	if len(cfg.Endpoints) != 1 {
+		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
+	}
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	partpath := dbPath + ".part"
+	defer os.RemoveAll(partpath)
+
+	var f *os.File
+	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
+	if err != nil {
+		return fmt.Errorf("could not open %s (%v)", partpath, err)
+	}
+	s.lg.Info("created temporary db file", zap.String("path", partpath))
+
+	now := time.Now()
+	var rd io.ReadCloser
+	rd, err = cli.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+	s.lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
+	var size int64
+	size, err = io.Copy(f, rd)
+	if err != nil {
+		return err
+	}
+	if !hasChecksum(size) {
+		return fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
+	}
+	if err = fileutil.Fsync(f); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	s.lg.Info(
+		"fetched snapshot",
+		zap.String("endpoint", cfg.Endpoints[0]),
+		zap.String("size", humanize.Bytes(uint64(size))),
+		zap.Duration("took", time.Since(now)),
+	)
+
+	if err = os.Rename(partpath, dbPath); err != nil {
+		return fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
+	}
+	s.lg.Info("saved", zap.String("path", dbPath))
+	return nil
 }
 
 // Status is the snapshot file status.
