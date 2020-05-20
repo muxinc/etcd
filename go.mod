@@ -17,6 +17,8 @@ replace (
 
 go 1.14
 
+go 1.14
+
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
