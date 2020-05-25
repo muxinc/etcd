@@ -30,7 +30,7 @@ import (
 
 func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 	bcfg := backend.DefaultBackendConfig()
-	bcfg.Path = cfg.BackendPath()
+	bcfg.Path = cfg.backendPath()
 	bcfg.UnsafeNoFsync = cfg.UnsafeNoFsync
 	if cfg.BackendBatchLimit != 0 {
 		bcfg.BatchLimit = cfg.BackendBatchLimit

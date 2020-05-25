@@ -137,11 +137,6 @@ type BackendConfig struct {
 	Logger *zap.Logger
 	// UnsafeNoFsync disables all uses of fsync.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
-	// Mlock prevents backend database file to be swapped
-	Mlock bool
-
-	// Hooks are getting executed during lifecycle of Backend's transactions.
-	Hooks Hooks
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -175,7 +170,6 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.FreelistType = bcfg.BackendFreelistType
 	bopts.NoSync = bcfg.UnsafeNoFsync
 	bopts.NoGrowSync = bcfg.UnsafeNoFsync
-	bopts.Mlock = bcfg.Mlock
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {

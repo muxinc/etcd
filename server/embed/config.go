@@ -372,21 +372,20 @@ type Config struct {
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
-	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
+	// DeprecatedLogOutput is to be deprecated in v3.5.
+	// Just here for safe migration in v3.4.
+	DeprecatedLogOutput []string `json:"log-output"`
+	// Debug is true, to enable debug level logging.
+	// WARNING: to be deprecated in 3.5. Use "--log-level=debug" instead.
+	Debug bool `json:"debug"`
+	// LogPkgLevels is being deprecated in v3.5.
+	// Only valid if "logger" option is "capnslog".
+	// WARN: DO NOT USE THIS!
+	LogPkgLevels string `json:"log-package-levels"`
 
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
-	// The setting improves etcd tail latency in environments were:
-	//   - memory pressure might lead to swapping pages to disk
-	//   - disk latency might be unstable
-	// Currently all etcd memory gets mlocked, but in future the flag can
-	// be refined to mlock in-use area of bbolt only.
-	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
-
-	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
-	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
-
-	// V2Deprecation describes phase of API & Storage V2 support
-	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
+	// UnsafeNoFsync disables all uses of fsync.
+	// Setting this is unsafe and will cause data loss.
+	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 }
 
 // configYAML holds the config suitable for yaml parsing

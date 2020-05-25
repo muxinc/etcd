@@ -154,37 +154,9 @@ type ServerConfig struct {
 
 	EnableGRPCGateway bool
 
-	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
-	ExperimentalEnableDistributedTracing bool
-	// ExperimentalTracerOptions are options for OpenTelemetry gRPC interceptor.
-	ExperimentalTracerOptions []otelgrpc.Option
-
-	WatchProgressNotifyInterval time.Duration
-
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
-
-	DowngradeCheckTime time.Duration
-
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
-	// The setting improves etcd tail latency in environments were:
-	//   - memory pressure might lead to swapping pages to disk
-	//   - disk latency might be unstable
-	// Currently all etcd memory gets mlocked, but in future the flag can
-	// be refined to mlock in-use area of bbolt only.
-	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
-
-	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
-	// a shared buffer in its readonly check operations.
-	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
-
-	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
-	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
-	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
-
-	// V2Deprecation defines a phase of v2store deprecation process.
-	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
