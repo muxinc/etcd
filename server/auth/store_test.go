@@ -874,7 +874,6 @@ func TestRolesOrder(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
-	defer tp.disable()
 	if err != nil {
 		t.Fatal(err)
 	}
