@@ -182,16 +182,8 @@ func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }
 
-func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
+func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
 	info.Logger = lg
-	if selfSignedCertValidity == 0 {
-		err = fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0")
-		info.Logger.Warn(
-			"cannot generate cert",
-			zap.Error(err),
-		)
-		return
-	}
 	err = fileutil.TouchDirAll(dirpath)
 	if err != nil {
 		if info.Logger != nil {
