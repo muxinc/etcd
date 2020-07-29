@@ -558,12 +558,16 @@ func (w *watchGrpcStream) run() {
 				if len(w.resuming) == 1 {
 					// head of resume queue, can register a new watcher
 					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						lg.Warningf("error when sending request: %v", err)
+						if w.lg != nil {
+							w.lg.Debug("error when sending request", zap.Error(err))
+						}
 					}
 				}
 			case *progressRequest:
 				if err := wc.Send(wreq.toPB()); err != nil {
-					lg.Warningf("error when sending request: %v", err)
+					if w.lg != nil {
+						w.lg.Debug("error when sending request", zap.Error(err))
+					}
 				}
 			}
 
@@ -591,7 +595,9 @@ func (w *watchGrpcStream) run() {
 
 				if ws := w.nextResume(); ws != nil {
 					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						lg.Warningf("error when sending request: %v", err)
+						if w.lg != nil {
+							w.lg.Debug("error when sending request", zap.Error(err))
+						}
 					}
 				}
 
@@ -637,9 +643,13 @@ func (w *watchGrpcStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				lg.Info("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
+				if w.lg != nil {
+					w.lg.Debug("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
+				}
 				if err := wc.Send(req); err != nil {
-					lg.Warning("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
+					if w.lg != nil {
+						w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
+					}
 				}
 			}
 
@@ -654,7 +664,9 @@ func (w *watchGrpcStream) run() {
 			}
 			if ws := w.nextResume(); ws != nil {
 				if err := wc.Send(ws.initReq.toPB()); err != nil {
-					lg.Warningf("error when sending request: %v", err)
+					if w.lg != nil {
+						w.lg.Debug("error when sending request", zap.Error(err))
+					}
 				}
 			}
 			cancelSet = make(map[int64]struct{})
@@ -673,9 +685,13 @@ func (w *watchGrpcStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				lg.Info("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
+				if w.lg != nil {
+					w.lg.Debug("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
+				}
 				if err := wc.Send(req); err != nil {
-					lg.Warning("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
+					if w.lg != nil {
+						w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
+					}
 				}
 			}
 			w.closeSubstream(ws)
