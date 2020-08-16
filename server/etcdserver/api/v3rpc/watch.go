@@ -60,15 +60,16 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		watchable: s.Watchable(),
 		ag:        s,
 	}
-	if srv.lg == nil {
-		srv.lg = zap.NewNop()
-	}
 	if s.Cfg.WatchProgressNotifyInterval > 0 {
 		if s.Cfg.WatchProgressNotifyInterval < minWatchProgressInterval {
-			srv.lg.Warn(
-				"adjusting watch progress notify interval to minimum period",
-				zap.Duration("min-watch-progress-notify-interval", minWatchProgressInterval),
-			)
+			if srv.lg != nil {
+				srv.lg.Warn(
+					"adjusting watch progress notify interval to minimum period",
+					zap.Duration("min-watch-progress-notify-interval", minWatchProgressInterval),
+				)
+			} else {
+				plog.Warningf("adjusting watch progress notify interval to minimum period %v", minWatchProgressInterval)
+			}
 			s.Cfg.WatchProgressNotifyInterval = minWatchProgressInterval
 		}
 		SetProgressReportInterval(s.Cfg.WatchProgressNotifyInterval)
