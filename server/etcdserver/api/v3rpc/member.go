@@ -16,8 +16,6 @@ package v3rpc
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -96,19 +94,6 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 		}
 	}
 	membs := membersToProtoMembers(cs.cluster.Members())
-	for idx := range membs {
-		mv := membs[idx]
-		if len(mv.ClientURLs) == 0 {
-			mv.ClientURLs = []string{"invalid"}
-			fmt.Fprintf(os.Stderr, "[EKS-DEBUG] member %x (name %q) has empty ClientURLs, adding placeholder value to prevent ClientURLs[0] panic [ClientURLs %q, PeerURLs %q]",
-				mv.ID,
-				mv.Name,
-				mv.ClientURLs,
-				mv.PeerURLs,
-			)
-		}
-		membs[idx] = mv
-	}
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }
 
