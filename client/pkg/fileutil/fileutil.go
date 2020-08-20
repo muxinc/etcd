@@ -50,11 +50,7 @@ func TouchDirAll(dir string) error {
 	if Exist(dir) {
 		err := CheckDirPermission(dir, PrivateDirMode)
 		if err != nil {
-			lg, _ := zap.NewProduction()
-			if lg == nil {
-				lg = zap.NewExample()
-			}
-			lg.Warn("check file permission", zap.Error(err))
+			plog.Warningf("check file permission: %v", err)
 		}
 	} else {
 		err := os.MkdirAll(dir, PrivateDirMode)
@@ -133,7 +129,7 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	}
 	dirMode := dirInfo.Mode().Perm()
 	if dirMode != perm {
-		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
+		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
 		return err
 	}
 	return nil
