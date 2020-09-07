@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const ThroughProxy = true
+const throughProxy = true
 
 var (
 	pmu     sync.Mutex

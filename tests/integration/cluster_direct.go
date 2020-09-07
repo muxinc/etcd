@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const ThroughProxy = false
+const throughProxy = false
 
 func toGRPC(c *clientv3.Client) grpcAPI {
 	return grpcAPI{
