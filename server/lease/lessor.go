@@ -41,7 +41,7 @@ var (
 	forever = time.Time{}
 
 	// maximum number of leases to revoke per second; configurable for tests
-	leaseRevokeRate = 1000
+	leaseRevokeRate = 5000
 
 	// maximum number of lease checkpoints recorded to the consensus log per second; configurable for tests
 	leaseCheckpointRate = 1000

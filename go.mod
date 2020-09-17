@@ -15,6 +15,8 @@ replace (
 	go.etcd.io/etcd/tests/v3 => ./tests
 )
 
+go 1.14
+
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/dustin/go-humanize v1.0.0
