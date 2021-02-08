@@ -18,19 +18,37 @@
 package embed
 
 import (
-	"fmt"
-	"os"
-
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
-
-	"go.uber.org/zap/zapcore"
+	"crypto/tls"
+	"testing"
 )
 
-// use stderr as fallback
-func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
-	jw, err := logutil.NewJournalWriter(os.Stderr)
-	if err != nil {
-		return nil, fmt.Errorf("can't find journal (%v)", err)
+func TestGetCipherSuite_not_existing(t *testing.T) {
+	_, ok := GetCipherSuite("not_existing")
+	if ok {
+		t.Fatal("Expected not ok")
 	}
 	return zapcore.AddSync(jw), nil
+}
+
+func CipherSuiteExpectedToExist(tb testing.TB, cipher string, expectedId uint16) {
+	vid, ok := GetCipherSuite(cipher)
+	if !ok {
+		tb.Errorf("Expected %v cipher to exist", cipher)
+	}
+	if vid != expectedId {
+		tb.Errorf("For %v expected=%v found=%v", cipher, expectedId, vid)
+	}
+}
+
+func TestGetCipherSuite_success(t *testing.T) {
+	CipherSuiteExpectedToExist(t, "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+	CipherSuiteExpectedToExist(t, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+
+	// Explicit test for legacy names
+	CipherSuiteExpectedToExist(t, "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305", tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
+	CipherSuiteExpectedToExist(t, "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305", tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256)
+}
+
+func TestGetCipherSuite_insecure(t *testing.T) {
+	CipherSuiteExpectedToExist(t, "TLS_ECDHE_RSA_WITH_RC4_128_SHA", tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA)
 }
