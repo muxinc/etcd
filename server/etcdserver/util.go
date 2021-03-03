@@ -104,9 +104,6 @@ func (nc *notifier) notify(err error) {
 }
 
 func warnOfExpensiveRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
-	if time.Since(now) <= warningApplyDuration {
-		return
-	}
 	var resp string
 	if !isNil(respMsg) {
 		resp = fmt.Sprintf("size:%d", proto.Size(respMsg))
@@ -133,7 +130,7 @@ func warnOfFailedRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer
 	}
 }
 
-func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
+func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
 	reqStringer := pb.NewLoggableTxnRequest(r)
 	var resp string
 	if !isNil(txnResponse) {
@@ -148,13 +145,10 @@ func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, now time.Time, r *pb.TxnR
 		}
 		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), txnResponse.Size())
 	}
-	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "read-only txn ", resp, err)
+	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "read-only range ", resp, err)
 }
 
 func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
-	if time.Since(now) <= warningApplyDuration {
-		return
-	}
 	var resp string
 	if !isNil(rangeResponse) {
 		resp = fmt.Sprintf("range_response_count:%d size:%d", len(rangeResponse.Kvs), rangeResponse.Size())
@@ -162,18 +156,30 @@ func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, warningApplyDuration ti
 	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "read-only range ", resp, err)
 }
 
-// callers need make sure time has passed warningApplyDuration
 func warnOfExpensiveGenericRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, prefix string, resp string, err error) {
-	lg.Warn(
-		"apply request took too long",
-		zap.Duration("took", time.Since(now)),
-		zap.Duration("expected-duration", warningApplyDuration),
-		zap.String("prefix", prefix),
-		zap.String("request", reqStringer.String()),
-		zap.String("response", resp),
-		zap.Error(err),
-	)
-	slowApplies.Inc()
+	d := time.Since(now)
+	if d > warningApplyDuration {
+		if lg != nil {
+			lg.Warn(
+				"apply request took too long",
+				zap.Duration("took", d),
+				zap.Duration("expected-duration", warningApplyDuration),
+				zap.String("prefix", prefix),
+				zap.String("request", reqStringer.String()),
+				zap.String("response", resp),
+				zap.Error(err),
+			)
+		} else {
+			var result string
+			if err != nil {
+				result = fmt.Sprintf("error:%v", err)
+			} else {
+				result = resp
+			}
+			plog.Warningf("%srequest %q with result %q took too long (%v) to execute", prefix, reqStringer.String(), result, d)
+		}
+		slowApplies.Inc()
+	}
 }
 
 func isNil(msg proto.Message) bool {

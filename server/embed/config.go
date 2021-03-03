@@ -318,6 +318,9 @@ type Config struct {
 	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
 	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
+	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
+	// takes more time than this value.
+	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
