@@ -17,7 +17,7 @@ replace (
 
 go 1.14
 
-go 1.14
+go 1.12
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
