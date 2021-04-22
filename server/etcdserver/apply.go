@@ -243,15 +243,11 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 member
 func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
 	resp = &pb.PutResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	trace = traceutil.Get(ctx)
-	// create put tracing if the trace in context is empty
-	if trace.IsEmpty() {
-		trace = traceutil.New("put",
-			a.s.Logger(),
-			traceutil.Field{Key: "key", Value: string(p.Key)},
-			traceutil.Field{Key: "req_size", Value: p.Size()},
-		)
-	}
+	trace = traceutil.New("put",
+		a.s.getLogger(),
+		traceutil.Field{Key: "key", Value: string(p.Key)},
+		traceutil.Field{Key: "req_size", Value: p.Size()},
+	)
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {
 		if leaseID != lease.NoLease {
