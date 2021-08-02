@@ -31,6 +31,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const minWatchProgressInterval = 100 * time.Millisecond
+
 type watchServer struct {
 	lg *zap.Logger
 
@@ -46,7 +48,7 @@ type watchServer struct {
 
 // NewWatchServer returns a new watch server.
 func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
-	return &watchServer{
+	srv := &watchServer{
 		lg: s.Cfg.Logger,
 
 		clusterID: int64(s.Cluster().ID()),
@@ -58,6 +60,21 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		watchable: s.Watchable(),
 		ag:        s,
 	}
+	if s.Cfg.WatchProgressNotifyInterval > 0 {
+		if s.Cfg.WatchProgressNotifyInterval < minWatchProgressInterval {
+			if srv.lg != nil {
+				srv.lg.Warn(
+					"adjusting watch progress notify interval to minimum period",
+					zap.Duration("min-watch-progress-notify-interval", minWatchProgressInterval),
+				)
+			} else {
+				plog.Warningf("adjusting watch progress notify interval to minimum period %v", minWatchProgressInterval)
+			}
+			s.Cfg.WatchProgressNotifyInterval = minWatchProgressInterval
+		}
+		SetProgressReportInterval(s.Cfg.WatchProgressNotifyInterval)
+	}
+	return srv
 }
 
 var (
@@ -189,15 +206,25 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		}
 	}()
 
+	// TODO: There's a race here. When a stream  is closed (e.g. due to a cancellation),
+	// the underlying error (e.g. a gRPC stream error) may be returned and handled
+	// through errc if the recv goroutine finishes before the send goroutine.
+	// When the recv goroutine wins, the stream error is retained. When recv loses
+	// the race, the underlying error is lost (unless the root error is propagated
+	// through Context.Err() which is not always the case (as callers have to decide
+	// to implement a custom context to do so). The stdlib context package builtins
+	// may be insufficient to carry semantically useful errors around and should be
+	// revisited.
 	select {
 	case err = <-errc:
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
 		close(sws.ctrlStream)
-
 	case <-stream.Context().Done():
 		err = stream.Context().Err()
-		// the only server-side cancellation is noleader for now.
 		if err == context.Canceled {
-			err = rpctypes.ErrGRPCNoLeader
+			err = rpctypes.ErrGRPCWatchCanceled
 		}
 	}
 
@@ -259,9 +286,10 @@ func (sws *serverWatchStream) recvLoop() error {
 
 				select {
 				case sws.ctrlStream <- wr:
+					continue
 				case <-sws.closec:
+					return nil
 				}
-				return nil
 			}
 
 			filters := FiltersFromRequest(creq)

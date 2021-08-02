@@ -162,6 +162,8 @@ Auth:
     Specify a v3 authentication token type and its options ('simple' or 'jwt').
   --bcrypt-cost ` + fmt.Sprintf("%d", bcrypt.DefaultCost) + `
     Specify the cost / strength of the bcrypt algorithm for hashing auth passwords. Valid values are between ` + fmt.Sprintf("%d", bcrypt.MinCost) + ` and ` + fmt.Sprintf("%d", bcrypt.MaxCost) + `.
+  --auth-token-ttl 300
+    Time (in seconds) of the auth-token-ttl.
 
 Profiling and Monitoring:
   --enable-pprof 'false'
@@ -208,6 +210,10 @@ Experimental feature:
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
+  --experimental-watch-progress-notify-interval '10m'
+    Duration of periodical watch progress notification.
+  --experimental-warning-apply-duration '100ms'
+    Warning is generated if requests take more than this duration.
 
 Unsafe feature:
   --force-new-cluster 'false'
